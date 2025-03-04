@@ -1,14 +1,19 @@
 import datetime
 
-trackFrameDb  = '/scratch/rlohman/SMCalVal/NISAR_TrackFrame_L_20240530.gpkg' 
-anciStatic    = '/scratch/rlohman/static/NISAR_SM_STATIC_ANCILLARY_002.h5'
+
+mainPath      = '/Users/rlohman/SMCalVal/'
 sparseTypes   = ('SCAN','NEON')
+superTypes    = ('SOILSCAPE')
+outFile       = mainPath+'results.csv'
+scanPath      = mainPath+'SCAN/'
+neonPath      = mainPath+'NEON/'
+soilPath      = mainPath+'SOILSCAPE/'
 
-outFile       = '/scratch/rlohman/SMCalVal/results.csv'
-scanPath      = '/scratch/rlohman/SMCalVal/SCAN/'
-neonPath      = '/scratch/rlohman/SMCalVal/NEON/'
-
-neonDepths    = '/scratch/rlohman/SMCalVal/NEON/swc_depthsV2.csv'    
+##move these files from supportFiles/
+anciStatic    = '/Users/rlohman/Software/SMCalVal/supportFiles/NISAR_SM_STATIC_ANCILLARY_002.h5'
+trackFrameDb  = mainPath+'NISAR_TrackFrame_L_20240530.gpkg' 
+soilMeta      = soilPath+'soilscape_site_meta_data.csv'
+neonDepths    = neonPath+'swc_depthsV2.csv'    
 
 
 # Set these to initial target timespan - here only used to exclude sensors with no overlap with this timespan
