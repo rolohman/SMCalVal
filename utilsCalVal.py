@@ -4,6 +4,7 @@ import glob
 import re
 import os
 import datetime
+import h5py
 from datetime import timedelta
 
 def EASEconvert(x,y,LatLon): 
@@ -40,50 +41,44 @@ def EASEconvert(x,y,LatLon):
         y           = coords[0] #lat
     return x,y
 
-def read_WalnutGulch():
+def read_WalnutGulch(ptezr,ptezc):
 
-    workDir      = '/scratch/rlohman/'
+    mods         = ('DSG','PMI','TSR')
+    workDir      = '/scratch/rlohman/WalnutGulchA/Path62Frame620BeamFP66'
     retDir       = workDir+'R4/'
-    outFiles     = np.array(glob.glob(retDir+('[0-9]'*8)+'.h5'))
+    gcovs        = np.array(glob.glob(retDir+('[0-9]'*8)+'.h5'))
 
-    tmp          = re.search(r'2[0-9]{7}',outFiles[0])
-    inds         = tmp.span()
-    dates        = np.array([datetime.datetime.strptime(x[inds[0]:inds[1]],'%Y%m%d') for x in outFiles])
-
-    sort_index   = np.argsort(dates)
-    gcovs        = outFiles[sort_index]
-    dates        = dates[sort_index]
-
-    allgcovs      = np.reshape([dirName+os.path.basename(x) for dirName in retDir for x in gcovs],[len(modDirs),len(dates)])
-
-
-
-
+    #read in first date, find pixel matching ezr,ezc for target insitu location
+    fo  = h5py.File(gcovs[0],'r')
+    eci = fo['/science/LSAR/SME2/grids/EASEGridColumnIndex'][()]
+    eri = fo['/science/LSAR/SME2/grids/EASEGridRowIndex'][()]
     idx = np.array([np.linalg.norm(x) for x in eci-ptezc]).argmin()
     idy = np.array([np.linalg.norm(x) for x in eri-ptezr]).argmin()
-    print(lon[idx],lat[idy],ptezr,ptezc,idx,idy)
-    retr= np.zeros([len(modDirs),len(gcovs),3])*np.nan
-    rete= np.zeros([len(modDirs),len(gcovs),3])*np.nan
-    HH  = np.zeros([len(modDirs),len(gcovs)])*np.nan
-    mods=('DSG','PMI','TSR')
-    for j in range(len(modDirs)):
-        for i in range(len(dates)):
-                if os.path.isfile(allgcovs[j,i]):
-                    fo=h5py.File(allgcovs[j,i],'r')
-                    dataset='/science/LSAR/SME2/grids/radarData/frequencyA/sigma0HH'
-                    if dataset in fo:
-                        HH[j,i] =fo[dataset][idy,idx]
 
-                    for k in range(len(mods)):
-                        dataset='/science/LSAR/SME2/grids/algorithmCandidates/'+mods[k]+'/soilMoisture'
+    ngcov = len(gcovs)
+    nmods = len(mods)
+    dates = np.zeros([ngcov])
+    retr= np.zeros([ngcov,nmods])*np.nan
+    rete= np.zeros([ngcov,nmods])*np.nan
+ 
+    for i in range(ngcov):
+         if os.path.isfile(gcovs[i]):
+                    fo=h5py.File(gcovs[i],'r')
+                    dataset='science/LSAR/identification/zeroDopplerStartTime'
+                    if dataset in fo:
+                        d =fo[dataset]
+                        dates[i]=d[()].decode()
+
+                    for j in range(len(mods)):
+                        dataset='/science/LSAR/SME2/grids/algorithmCandidates/'+mods[j]+'/soilMoisture'
                         if dataset in fo:
-                            retr[j,i,k] =fo[dataset][idy,idx]
-                    for k in range(len(mods)):
-                        dataset='/science/LSAR/SME2/grids/algorithmCandidates/'+mods[k]+'/soilMoistureUncertainty'
+                            retr[i,j] =fo[dataset][idy,idx]
+                        dataset='/science/LSAR/SME2/grids/algorithmCandidates/'+mods[j]+'/soilMoistureUncertainty'
                         if dataset in fo:
-                            rete[j,i,k] =fo[dataset][idy,idx]
+                            rete[i,j] =fo[dataset][idy,idx]
                     
                     fo.close()
+   
     retr[retr<0] = np.nan
     rete[rete<0] = np.nan
-    HH[HH<0]     = np.nan
+   
