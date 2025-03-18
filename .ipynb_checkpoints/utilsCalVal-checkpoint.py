@@ -1,5 +1,13 @@
-from osgeo import gdal,osr
+from osgeo import osr
+import numpy as np
+import glob
+import re
+import os
+import datetime
+import h5py
+from datetime import timedelta
 
+import setParams as p
 
 def EASEconvert(x,y,LatLon): 
     #LatLon=1 go from LatLon to EASE2: x = lon, y=lat
@@ -34,4 +42,55 @@ def EASEconvert(x,y,LatLon):
         x           = coords[1] #lon
         y           = coords[0] #lat
     return x,y
-  
+
+def readWalnutGulch(ptezr,ptezc):
+
+    modNames     = p.modNames
+    workDir      = '/scratch/rlohman/WalnutGulchA/Path62Frame620BeamFP66/'
+    retDir       = workDir+'R4/'
+    gcovs        = np.array(glob.glob(retDir+('[0-9]'*8)+'.h5'))
+
+    #read in first date, find pixel matching ezr,ezc for target insitu location
+    fo  = h5py.File(gcovs[0],'r')
+    eci = fo['/science/LSAR/SME2/grids/EASEGridColumnIndex'][()]
+    eri = fo['/science/LSAR/SME2/grids/EASEGridRowIndex'][()]
+    idx = np.array([np.linalg.norm(x) for x in eci-ptezc]).argmin()
+    idy = np.array([np.linalg.norm(x) for x in eri-ptezr]).argmin()
+
+    ngcov = len(gcovs)
+    nmods = len(modNames)
+    dates = []
+    retr= np.zeros([ngcov,nmods])*np.nan
+    rete= np.zeros([ngcov,nmods])*np.nan
+    retq= np.zeros([ngcov,nmods])*np.nan
+ 
+    for i in range(ngcov):
+         if os.path.isfile(gcovs[i]):
+                    fo=h5py.File(gcovs[i],'r')
+                    dataset='science/LSAR/identification/zeroDopplerStartTime'
+                    if dataset in fo:
+                        d =fo[dataset]
+                        d = d[()].decode()
+                        dates.append(datetime.datetime.fromisoformat(d))
+                    else:
+                        print('error - no start time in file')
+                        
+                    for j in range(len(modNames)):
+                        dataset='/science/LSAR/SME2/grids/algorithmCandidates/'+modNames[j]+'/soilMoisture'
+                        if dataset in fo:
+                            retr[i,j] = fo[dataset][idy,idx]
+                        dataset='/science/LSAR/SME2/grids/algorithmCandidates/'+modNames[j]+'/soilMoistureUncertainty'
+                        if dataset in fo:
+                            rete[i,j] = fo[dataset][idy,idx]
+                        dataset='/science/LSAR/SME2/grids/algorithmCandidates/'+modNames[j]+'/retrievalQualityFlag'
+                        if dataset in fo:
+                            temp      = fo[dataset][idy,idx]
+                            #just retrieves first bit (retrieval recommended)
+                            retq[i,j] = temp>>0&1
+                    fo.close()
+   
+    retr[retr<0] = np.nan
+    rete[rete<0] = np.nan
+    return dates, retr,rete,retq
+
+    

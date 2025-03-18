@@ -2,6 +2,7 @@ import datetime
 
 
 mainPath      = '/Users/rlohman/Desktop/SMCalVal/'
+mainPath      = '/home/jovyan/SMCalValdir/'
 outFileTot    = mainPath+'results.csv'
 
 
@@ -19,6 +20,8 @@ soilscapeNode = mainPath+'supportFiles/SOILSCAPE/soilscape_site_nodeLocations.cs
 #NEON
 neonDepths    = mainPath+'supportFiles/NEON/swc_depthsV2.csv'    
 
+#Retrieval info
+modNames      = ('DSG','PMI','TSR')
 
 #output files
 #Soilscape
